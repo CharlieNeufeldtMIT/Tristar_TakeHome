@@ -1,45 +1,46 @@
 import os
 import torch
 import torch.nn as nn
-import torch
-import torchvision
-import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
+from torch.utils.data import DataLoader
 from torchvision.utils import save_image
+import torch.optim as optim
 
 # Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Hyperparameters
-latent_dim = 16
+latent_dim = 50
 image_size = 128
 batch_size = 32
-learning_rate = 1e-3
-num_epochs = 50
+learning_rate = 0.0001
+num_epochs = 200
 
-# Define the VAE model
+# VAE Definition
 class VAE(nn.Module):
-    def __init__(self, latent_dim):
+    def __init__(self, latent_dim, image_size=128):
         super(VAE, self).__init__()
+        self.image_size = image_size
+
         # Encoder
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, stride=2, padding=1),  # 128 -> 64
+            nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1),  # 128 -> 64
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),  # 64 -> 32
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),  # 64 -> 32
             nn.ReLU(),
             nn.Flatten()
         )
-        self.fc_mu = nn.Linear(64 * (image_size // 4) * (image_size // 4), latent_dim)
-        self.fc_logvar = nn.Linear(64 * (image_size // 4) * (image_size // 4), latent_dim)
+        flattened_size = (image_size // 4) * (image_size // 4) * 128
+        self.fc_mu = nn.Linear(flattened_size, latent_dim)
+        self.fc_logvar = nn.Linear(flattened_size, latent_dim)
 
         # Decoder
-        self.fc_decode = nn.Linear(latent_dim, 64 * (image_size // 4) * (image_size // 4))
+        self.fc_decode = nn.Linear(latent_dim, flattened_size)
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),  # 32 -> 64
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # 32 -> 64
             nn.ReLU(),
-            nn.ConvTranspose2d(32, 3, kernel_size=3, stride=2, padding=1, output_padding=1),  # 64 -> 128
+            nn.ConvTranspose2d(64, 3, kernel_size=3, stride=2, padding=1, output_padding=1),  # 64 -> 128
             nn.Sigmoid()
         )
 
@@ -49,27 +50,24 @@ class VAE(nn.Module):
         return mu + eps * std
 
     def forward(self, x):
-        # Encode
+        batch_size = x.size(0)
         x = self.encoder(x)
         mu = self.fc_mu(x)
         logvar = self.fc_logvar(x)
         z = self.reparameterize(mu, logvar)
 
-        # Decode
         x = self.fc_decode(z)
-        x = x.view(-1, 64, image_size // 4, image_size // 4)
+        x = x.view(batch_size, 128, self.image_size // 4, self.image_size // 4)
         x = self.decoder(x)
         return x, mu, logvar
 
-# Loss function
+# Loss Function
 def vae_loss(recon_x, x, mu, logvar):
-    # Reconstruction loss
-    recon_loss = nn.MSELoss()(recon_x, x)
-    # KL divergence
-    kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    return recon_loss + kl_loss / x.size(0)
+    recon_loss = nn.MSELoss()(recon_x, x)  # Reconstruction Loss
+    kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) / x.size(0)  # KL Divergence
+    return recon_loss + kl_loss
 
-# Data preparation
+# Data Preparation
 data_dir = "data/bracket_white/preprocessed_train/good"
 transform = transforms.Compose([
     transforms.Resize((image_size, image_size)),
@@ -78,15 +76,16 @@ transform = transforms.Compose([
 dataset = ImageFolder(root=data_dir, transform=transform)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-# Model, optimizer, and training loop
-model = VAE(latent_dim).to(device)
+# Model and Optimizer
+model = VAE(latent_dim, image_size=image_size).to(device)
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
+# Training Loop
 print("Training the VAE...")
 for epoch in range(num_epochs):
     model.train()
     epoch_loss = 0
-    for images, _ in dataloader:  # Images only; ignore labels
+    for images, _ in dataloader:
         images = images.to(device)
         optimizer.zero_grad()
         recon_images, mu, logvar = model(images)
@@ -96,11 +95,12 @@ for epoch in range(num_epochs):
         epoch_loss += loss.item()
     print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
-    # Save sample reconstructions
+    # Save Sample Reconstructions
     if (epoch + 1) % 10 == 0:
-        save_image(recon_images[:16], f"recon_epoch_{epoch + 1}.png")
+        os.makedirs("reconstructions", exist_ok=True)
+        save_image(recon_images[:16], f"reconstructions/recon_epoch_{epoch + 1}.png")
 
-# Save the model
+# Save the Model
 os.makedirs("models", exist_ok=True)
 torch.save(model.state_dict(), "models/vae.pth")
 print("Model training complete and saved!")
