@@ -91,6 +91,11 @@ class VAETester:
         }
 
     def calculate_defect_metrics(self, reconstruction, ground_truth):
+        # Ensure consistent batch sizes
+        min_batch_size = min(reconstruction.size(0), ground_truth.size(0))
+        reconstruction = reconstruction[:min_batch_size]
+        ground_truth = ground_truth[:min_batch_size]
+        
         # Calculate difference between reconstruction and ground truth
         diff = torch.abs(reconstruction - ground_truth)
         
