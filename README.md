@@ -6,14 +6,14 @@ The `vae_model.py` script defines the **Detail-Enhanced Variational Autoencoder 
 3. **Encoder-Decoder Architecture**: Combines downsampling layers with upsampling layers, paired with batch normalization, for efficient feature extraction and reconstruction.
 4. **Perceptual Loss**: Uses a pre-trained VGG16 network to compute feature-level differences between original and reconstructed images.
 
-#### VAETrainer
-The `vae_trainer.py` script provides a pipeline for training the DetailVAE. It includes data augmentation for improved generalization, a comprehensive training loop with checkpointing, and validation steps to evaluate the model's performance. Intermediate results, such as reconstructions and defect maps, are saved for qualitative assessment.
+#### VAE Trainer
+The `train_with_validation.py` script provides a pipeline for training the DetailVAE. It includes data augmentation for improved generalization, a comprehensive training loop with checkpointing, and validation steps to evaluate the model's performance. Intermediate results, such as reconstructions and defect maps, are saved for qualitative assessment.
 
-#### VAETester
-The `vae_tester.py` script evaluates the trained model on unseen datasets. It calculates metrics like Mean Squared Error (MSE), Peak Signal-to-Noise Ratio (PSNR), and F1-Score to measure reconstruction quality and defect detection accuracy. It also generates a heatmap summarizing the performance across multiple categories.
+#### VAE Tester
+The `test_vae.py` script evaluates the trained model on unseen datasets. It calculates metrics like Mean Squared Error (MSE), Peak Signal-to-Noise Ratio (PSNR), and F1-Score to measure reconstruction quality and defect detection accuracy. It also generates a heatmap summarizing the performance across multiple categories.
 
-#### ImageClassifier
-The `image_classifier.py` script uses a trained DetailVAE model to classify images into "good" or "defective" categories based on reconstruction error.
+#### Image Classifier
+The `classify_images.py` script uses a trained DetailVAE model to classify images into "good" or "defective" categories based on reconstruction error.
 
 #### Validation Metrics and Visualizations
 During the validation phase, several steps are performed to generate visualizations, such as `defective_painting_epoch_14.png`:
