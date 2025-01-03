@@ -43,3 +43,7 @@
 ### Reconstructed Images: Compare original and reconstructed images in test_results/good and test_results/<defect_type>.
 ### Defect Maps: Visualize defect detection performance.
 ### Metrics Heatmap: View test_results/metrics/metrics_heatmap.png for an overview of performance across categories.
+
+## Classification
+### Automatically classifies images as "good" or "defective" using the trained DetailVAE model.
+
